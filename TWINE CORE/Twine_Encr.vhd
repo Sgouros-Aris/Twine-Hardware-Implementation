@@ -1,0 +1,204 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+
+entity twine_encr is
+
+     port(rst       : in std_logic;
+          clk       : in std_logic;
+          sel       : in std_logic;
+          counter   : in std_logic_vector(5 downto 0);
+          data_in   : in std_logic_vector(63 downto 0);
+          encr_decr : in std_logic;
+          round_key : in std_logic_vector(31 downto 0);
+          core_out  : out std_logic_vector(63 downto 0)
+         );
+
+end twine_encr;
+
+architecture twine_encr_arch of twine_encr is
+
+--COMPONENT INSTANTIATION--
+component sbox
+port (input  : in std_logic_vector(3 downto 0);
+     output : out std_logic_vector(3 downto 0)
+     );
+end component;
+
+--TYPES--
+type type1_1Dx1D is array (0 to 15) of std_logic_vector (3 downto 0);
+
+--SIGNALS--
+signal X, X_next                      : type1_1Dx1D;
+signal k0, k1, k2, k3, k4, k5, k6, k7 : std_logic_vector(3 downto 0) := "0000";
+signal s0, s1, s2, s3, s4, s5, s6, s7 : std_logic_vector(3 downto 0) := "0000";
+signal m0, m1, m2, m3, m4, m5, m6, m7 : std_logic_vector(3 downto 0) := "0000";
+signal cnt                            : integer := 0;
+
+
+begin
+
+     cnt <= to_integer(unsigned(counter));
+
+     k0 <= X(0) xor round_key(31 downto 28);                
+     k1 <= X(2) xor round_key(27 downto 24);           
+     k2 <= X(4) xor round_key(23 downto 20);                              
+     k3 <= X(6) xor round_key(19 downto 16);                     
+     k4 <= X(8) xor round_key(15 downto 12);
+     k5 <= X(10) xor round_key(11 downto 8);
+     k6 <= X(12) xor round_key(7 downto 4);
+     k7 <= X(14) xor round_key(3 downto 0);
+
+     U0: sbox port map(k0, s0);
+     U1: sbox port map(k1, s1);
+     U2: sbox port map(k2, s2);
+     U3: sbox port map(k3, s3);
+     U4: sbox port map(k4, s4);
+     U5: sbox port map(k5, s5);
+     U6: sbox port map(k6, s6);
+     U7: sbox port map(k7, s7);
+
+     m0 <= s0 xor X(1);
+     m1 <= s1 xor X(3);
+     m2 <= s2 xor X(5);
+     m3 <= s3 xor X(7);
+     m4 <= s4 xor X(9);
+     m5 <= s5 xor X(11);
+     m6 <= s6 xor X(13);
+     m7 <= s7 xor X(15);
+ 
+     X_next(0)  <= X(0);
+     X_next(1)  <= m0;
+     X_next(2)  <= X(2);
+     X_next(3)  <= m1;
+     X_next(4)  <= X(4);
+     X_next(5)  <= m2;
+     X_next(6)  <= X(6);
+     X_next(7)  <= m3;
+     X_next(8)  <= X(8);
+     X_next(9)  <= m4;
+     X_next(10) <= X(10);
+     X_next(11) <= m5;
+     X_next(12) <= X(12);
+     X_next(13) <= m6;
+     X_next(14) <= X(14);
+     X_next(15) <= m7;
+    
+   process(rst, clk)
+   begin
+   
+   if rst = '1' then
+      X        <= (others => (others => '0'));
+      core_out <= (others => '0');
+  
+   elsif clk'event and clk = '1' then
+
+       if encr_decr = '0' then
+
+       if cnt = 35 then
+       
+             core_out <= X_next(0) & X_next(1) & X_next(2) & X_next(3) &
+                         X_next(4) & X_next(5) & X_next(6) & X_next(7) &
+                         X_next(8) & X_next(9) & X_next(10) & X_next(11) &
+                         X_next(12) & X_next(13) & X_next(14) & X_next(15);
+       end if;
+
+
+       if sel = '0' then
+
+             X(0)   <= data_in(63 downto 60);
+             X(1)   <= data_in(59 downto 56);
+             X(2)   <= data_in(55 downto 52);
+             X(3)   <= data_in(51 downto 48);
+             X(4)   <= data_in(47 downto 44);
+             X(5)   <= data_in(43 downto 40);
+             X(6)   <= data_in(39 downto 36);
+             X(7)   <= data_in(35 downto 32);
+             X(8)   <= data_in(31 downto 28);
+             X(9)   <= data_in(27 downto 24);
+             X(10)  <= data_in(23 downto 20);
+             X(11)  <= data_in(19 downto 16);
+             X(12)  <= data_in(15 downto 12);
+             X(13)  <= data_in(11 downto  8);
+             X(14)  <= data_in(7  downto  4);
+             X(15)  <= data_in(3  downto  0);
+            
+        elsif sel = '1' then
+  
+            X(0)  <= X_next(1);
+	    X(1)  <= X_next(2);
+            X(2)  <= X_next(11);
+	    X(3)  <= X_next(6);
+	    X(4)  <= X_next(3);
+	    X(5)  <= X_next(0);
+	    X(6)  <= X_next(9);
+	    X(7)  <= X_next(4);
+	    X(8)  <= X_next(7);
+	    X(9)  <= X_next(10);
+	    X(10) <= X_next(13);
+	    X(11) <= X_next(14);
+	    X(12) <= X_next(5);
+	    X(13) <= X_next(8);
+	    X(14) <= X_next(15);
+	    X(15) <= X_next(12);
+
+        end if;
+
+
+     elsif encr_decr = '1' then
+       
+       if cnt = 0 then
+       
+           core_out <= X_next(0) & X_next(1) & X_next(2) & X_next(3) &
+                       X_next(4) & X_next(5) & X_next(6) & X_next(7) &
+                       X_next(8) & X_next(9) & X_next(10) & X_next(11) &
+                       X_next(12) & X_next(13) & X_next(14) & X_next(15);
+       end if;
+
+
+       if sel = '0' then
+
+             X(0)   <= data_in(63 downto 60);
+             X(1)   <= data_in(59 downto 56);
+             X(2)   <= data_in(55 downto 52);
+             X(3)   <= data_in(51 downto 48);
+             X(4)   <= data_in(47 downto 44);
+             X(5)   <= data_in(43 downto 40);
+             X(6)   <= data_in(39 downto 36);
+             X(7)   <= data_in(35 downto 32);
+             X(8)   <= data_in(31 downto 28);
+             X(9)   <= data_in(27 downto 24);
+             X(10)  <= data_in(23 downto 20);
+             X(11)  <= data_in(19 downto 16);
+             X(12)  <= data_in(15 downto 12);
+             X(13)  <= data_in(11 downto  8);
+             X(14)  <= data_in(7  downto  4);
+             X(15)  <= data_in(3  downto  0);
+            
+        elsif sel = '1' then
+  
+            X(0)  <= X_next(5);
+	    X(1)  <= X_next(0);
+            X(2)  <= X_next(1);
+	    X(3)  <= X_next(4);
+	    X(4)  <= X_next(7);
+	    X(5)  <= X_next(12);
+	    X(6)  <= X_next(3);
+	    X(7)  <= X_next(8);
+	    X(8)  <= X_next(13);
+	    X(9)  <= X_next(6);
+	    X(10) <= X_next(9);
+	    X(11) <= X_next(2);
+	    X(12) <= X_next(15);
+	    X(13) <= X_next(10);
+	    X(14) <= X_next(11);
+	    X(15) <= X_next(14);
+
+        end if;
+
+     end if;
+     end if;
+     end process;
+
+end twine_encr_arch;

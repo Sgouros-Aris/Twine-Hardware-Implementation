@@ -1,0 +1,32 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity sbox is
+
+port (input  : in std_logic_vector(3 downto 0);
+      output : out std_logic_vector(3 downto 0)
+);
+
+end sbox;
+
+architecture sbox_arch of sbox is
+begin
+
+   output <= "1100" when input = "0000" else --1
+             "0000" when input = "0001" else --2
+             "1111" when input = "0010" else--3
+             "1010" when input = "0011" else --4
+             "0010" when input = "0100" else --5
+             "1010" when input = "0101" else --6
+             "1001" when input = "0110" else --7
+             "0101" when input = "0111" else --8
+             "1000" when input = "1000" else --9
+             "0011" when input = "1001" else --10
+             "1101" when input = "1010" else --11
+             "0111" when input = "1011" else --12
+             "0001" when input = "1100" else --13
+             "1110" when input = "1101" else --14
+             "0100" when input = "1110" else --15
+             "0010" when input = "1111"; --16
+
+end sbox_arch;

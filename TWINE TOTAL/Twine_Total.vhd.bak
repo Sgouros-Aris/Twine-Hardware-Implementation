@@ -1,0 +1,136 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity twine_total is
+
+    generic(key_length : integer := 80);
+    port(rst  : std_logic;
+         clk             : in std_logic;
+         new_data        : in std_logic;
+	 input_data      : in std_logic;
+         data_in         : in std_logic_vector(63 downto 0);
+         encr_decr       : in std_logic;
+         new_key         : in std_logic;
+	 input_key       : in std_logic;
+         key             : in std_logic_vector(key_length - 1 downto 0);
+         busy_encr       : out std_logic;
+         busy_decr       : out std_logic;
+         data_out        : out std_logic_vector(63 downto 0)
+        );
+
+end twine_total;
+
+architecture twine_total_arch of twine_total is
+
+component twine_core 
+
+port (   rst             : in std_logic;
+         clk             : in std_logic;
+         new_data        : in std_logic;
+         data_in         : in std_logic_vector(63 downto 0);
+         round_key       : in std_logic_vector(31 downto 0);
+         start           : in std_logic;
+         encr_decr       : in std_logic;
+         busy_encr       : out std_logic;
+         busy_decr       : out std_logic;
+         rd_address      : out std_logic_vector(5 downto 0);
+         data_ready      : out std_logic;
+         core_out        : out std_logic_vector(63 downto 0)
+         );
+end component;
+
+component key_core
+
+port (   rst        : in std_logic;
+         clk        : in std_logic;
+         new_key    : in std_logic;
+         key        : in std_logic_vector(key_length - 1 downto 0);
+         rw         : out std_logic;
+         wr_address : out std_logic_vector(5 downto 0);
+         key_ready  : out std_logic;
+         Ki         : out std_logic_vector(31 downto 0)
+         );
+
+end component;
+
+component memory
+
+ port(  rst        : in std_logic;
+        clk        : in std_logic;
+        rw         : in std_logic;
+        wr_address : in std_logic_vector(5 downto 0);
+        rd_address : in std_logic_vector(5 downto 0);
+        Ki         : in std_logic_vector(31 downto 0);
+        round_key  : out std_logic_vector(31 downto 0)
+        );
+
+end component;
+
+component start_reg
+
+ port(   rst       : in std_logic;
+         clk       : in std_logic;
+         key_ready : in std_logic;
+         start     : out std_logic
+        );
+
+end component;
+
+component exit_reg
+
+port(     rst  : in std_logic;
+          clk  : in std_logic;
+          data_ready : in std_logic;
+          core_out   : in std_logic_vector(63 downto 0);
+          data_out   : out std_logic_vector(63 downto 0)
+          );
+
+end component;
+
+component key_reg80 
+
+     port(rst  : in std_logic;
+          clk  : in std_logic;
+          key_ready : in std_logic;
+          key_in   : in std_logic_vector(79 downto 0);
+          key_out   : out std_logic_vector(79 downto 0)
+          );
+
+end component;
+
+component key_to_twine_reg is
+
+     port(rst  : in std_logic;
+          clk  : in std_logic;
+          key_ready : in std_logic;
+          key_in   : in std_logic_vector(31 downto 0);
+          key_out   : out std_logic_vector(31 downto 0)
+          );
+     
+end component;
+
+
+signal temp1 : std_logic; --rw
+signal temp2 : std_logic_vector(5 downto 0); --wr_address
+signal temp3 : std_logic; --key_ready
+signal temp4 : std_logic_vector(31 downto 0); --Ki
+signal temp5 : std_logic; --start
+signal temp6 : std_logic_vector(5 downto 0); --rd_address
+signal temp7 : std_logic_vector(31 downto 0); --round_key
+signal temp8 : std_logic; --data_ready
+signal temp9 : std_logic_vector(63 downto 0); --core_out
+signal temp10: std_logic_vector(63 downto 0); --data_in
+signal temp11: std_logic_vector(79 downto 0); --key_in
+signal temp12: std_logic_vector(31 downto 0); --roundkeyout
+
+begin
+
+  U1: key_core port map (rst, clk, new_key, temp11, temp1, temp2, temp3, temp4);
+  U2: start_reg port map (rst, clk, temp3, temp5);
+  U3: memory    port map (rst, clk, temp1, temp2, temp6, temp4, temp7);
+  U4: twine_core port map (rst, clk, new_data, temp10, temp12, temp5, encr_decr, busy_encr, busy_decr, temp6, temp8, temp9);
+  U5: exit_reg port map (rst, clk, temp8, temp9, data_out);
+  U6: exit_reg port map (rst, clk, input_data, data_in, temp10);
+  U7: key_reg80 port map (rst, clk, input_key, key, temp11);
+  U8: key_to_twine_reg port map (rst, clk, input_data, temp7, temp12);
+end twine_total_arch;        

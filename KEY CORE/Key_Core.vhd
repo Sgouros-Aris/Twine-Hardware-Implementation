@@ -1,0 +1,73 @@
+library ieee;
+use ieee.std_logic_1164.all;
+
+
+entity key_core is
+   generic(key_length : integer := 80);
+   port (rst        : in std_logic;
+         clk        : in std_logic;
+         new_key    : in std_logic;
+         key        : in std_logic_vector(key_length - 1 downto 0);
+         rw         : out std_logic;
+         wr_address : out std_logic_vector(5 downto 0);
+         key_ready  : out std_logic;
+         Ki         : out std_logic_vector(31 downto 0)
+         );
+end key_core;
+
+architecture key_core_arch of key_core is
+
+component key_control
+   port(     rst       : in std_logic;
+	     clk       : in std_logic;
+	     new_key   : in std_logic;
+	     key_ready : out std_logic;
+	     sel       : out std_logic;
+	     counter   : out std_logic_vector(5 downto 0);
+             rw        : out std_logic;
+             wr_address: out std_logic_vector(5 downto 0)
+             );
+end component;
+
+component key_scheduling80
+   
+   port(     rst        : in std_logic;
+             clk        : in std_logic;
+	     sel        : in std_logic;
+             counter    : in std_logic_vector(5 downto 0);
+	     key        : in std_logic_vector(key_length - 1 downto 0);
+	     Ki         : out std_logic_vector(31 downto 0)
+	);
+end component;
+
+component key_scheduling128
+
+    port(    rst        : in std_logic;
+             clk        : in std_logic;
+	     sel        : in std_logic;
+             counter    : in std_logic_vector(5 downto 0);
+	     key        : in std_logic_vector(key_length - 1 downto 0);
+	     Ki         : out std_logic_vector(31 downto 0)
+	);
+end component;
+
+signal temp1 : std_logic;
+signal temp2 : std_logic_vector(5 downto 0);
+
+begin
+
+   GEN1: if (key_length = 80) generate
+   
+        U1: key_control      port map (rst, clk, new_key, key_ready, temp1, temp2, rw, wr_address);
+        U2: key_scheduling80 port map (rst, clk, temp1, temp2, key, Ki);
+
+   end generate;
+
+   GEN2: if (key_length = 128) generate
+   
+        U3: key_control       port map (rst, clk, new_key, key_ready, temp1, temp2, rw, wr_address);
+        U4: key_scheduling128 port map (rst, clk, temp1, temp2, key, Ki);
+
+   end generate;
+end key_core_arch;
+
